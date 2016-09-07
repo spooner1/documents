@@ -1,0 +1,34 @@
+﻿##### heatmaps with clusters from matrices #####
+
+library("gplots")
+data = read.table("counts.tsv",sep="\t",header=TRUE,row.names=1)
+datamat = pheatmap:::scale_mat(data.matrix(data), 'row')
+
+### how many clusters do we want? exchange 2 for another value or set k=x for an arbitrary number of clusters + #handselected colors ###
+
+hr <- hclust(dist(datamat), method="complete")
+mycl = cutree(hr, h=max(hr$height)/2)
+col = c("YELLOW", "DARKBLUE", "DARKORANGE", "DARKMAGENTA", "DARKCYAN", "DARKRED", "MAROON", "DARKGREEN", "LIGHTBLUE", "PINK", "MAGENTA", "LIGHTCYAN", "RED", "LIGHTGREEN")
+mycol = col[as.vector(mycl)]
+heatmap.2(as.matrix(data), Rowv=as.dendrogram(hr), col=bluered(75), scale = 'row', RowSideColors=mycol, trace="none", sepwidth=c(0,0), dendrogram = 'row', Colv = 'false', density.info='none', cexRow=0.1, cexCol=1)
+
+### make pdf ###
+
+pdf("heatmap.pdf",width=10,height=10)
+par(oma=c(5,1,1,1))
+heatmap.2(as.matrix(data), Rowv=as.dendrogram(hr), col=bluered(75), scale = 'row', RowSideColors=mycol, trace="none", sepwidth=c(0,0), dendrogram = 'row', Colv = 'false', density.info='none', cexRow=0.1, cexCol=1)
+dev.off()
+
+#labRow=NA -> keine rownames
+#labCol=c(*#*#*) -> colnames
+#adjCol=c(-*#*#*,0) -> colnames on top
+
+
+### extract data from clusters ###
+
+for (i in levels(factor(mycl))){cluster <- names(subset(mycl, mycl == i)); write.table(cluster,row.names=F,quote=F,col.names=F,file=paste0(mycol[which(names(mycl)==cluster[1],arr.ind=T)],"_genes.txt"))}
+
+### convert pdf to jpeg ###
+
+convert -density 300 .pdf -quality 100 .jpg
+

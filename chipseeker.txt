@@ -1,0 +1,58 @@
+﻿library(ChIPseeker)
+require(TxDb.Hsapiens.UCSC.hg19.knownGene)
+#require(TxDb.Mmusculus.UCSC.mm10.knownGene)
+require(clusterProfiler)
+txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
+#txdb <- TxDb.Mmusculus.UCSC.mm10.knownGene
+annoDb <- "org.Hs.eg.db"
+#annoDb <- "org.Mm.eg.db"
+promoter <- getPromoters(TxDb=txdb, upstream=3000, downstream=3000)
+
+peaks <- as.list(list.files("./",pattern="peaks.bed"))
+summits <- as.list(list.files("./", pattern="summits.bed"))
+
+for(x in summits){y=unlist(strsplit(x,"\\."[[1]][1])); pdf(paste(y,"genome_cov.pdf",sep="_")); plot(covplot(readPeakFile(x),title=paste("ChIP Peaks over Chromosomes",y), weightCol="V5")); dev.off()}; dev.off()
+
+tagMatrixList <- list()
+for(x in peaks){tagMatrixList[[strsplit(x, "\\.")[[1]][1]]] <- getTagMatrix(x, windows=promoter)}
+
+pdf("TSS_Heatmaps.pdf", title="TSS_Heatmaps")
+tagHeatmap(tagMatrixList, xlim=c(-3000, 3000), color=NULL)
+dev.off()
+
+peakslist <- list()
+for(x in peaks){peakslist[[strsplit(x, "_peaks\\.")[[1]][1]]] <- annotatePeak(x, tssRegion=c(-3000, 3000),TxDb=txdb, annoDb=annoDb,verbose=F)}
+
+summitslist <- list()
+for(x in summits){summitslist[[strsplit(x, "_summits\\.")[[1]][1]]] <- annotatePeak(x, tssRegion=c(-3000, -1),TxDb=txdb, annoDb=annoDb,verbose=F)}
+
+pdf("Feature_Distribution.pdf", title="Feature_Distribution")
+plotAnnoBar(summitslist)
+dev.off()
+
+pdf("Distribution_rel_to_TSS.pdf", title="Distribution_rel_to_TSS")
+plotDistToTSS(peakslist)
+dev.off()
+
+genes = lapply(peakslist, function(i) as.data.frame(i)$geneId); 
+names(genes)=sub("_", "\n",names(genes)); compMF <- compareCluster(geneCluster=genes, fun="enrichGO", ont="MF", pvalueCutoff=0.05, pAdjustMethod="BH")
+pdf("Molecular_Function_Enrichment.pdf", title="Molecular_Function_Enrichment",width=10,height=15)
+plot(compMF, showCategory = 20, title = "Molecular Function Enrichment")
+dev.off()
+
+tagMatrixList <- list()
+for(x in summits){tagMatrixList[[strsplit(x, "\\.")[[1]][1]]] <- getTagMatrix(x, windows=promoter)}
+
+pdf("Peaks_TSS_3000bp.pdf", title="Peaks_TSS_3000bp")
+plotAvgProf(tagMatrixList, xlim=c(-3000, 3000), conf=0.95,resample=100, facet="row")
+dev.off()
+
+write.table(as.data.frame(as.GRanges(peakslist[[3]])),file="test.tsv",sep="\t",quote=F,row.names=F)
+
+
+pdf("overlap.pdf", title="overlap_r3_wt",pointsize=8, height=10,width=10)
+genes= lapply(peakslist, function(i) as.data.frame(i)$geneId); vennplot(genes)
+dev.off()
+
+###   plot annopie   ###
+for(x in 1:6){pdf(paste0(names(summitslist[x]),".pdf"),title=names(summitslist[x]));plotAnnoPie(summitslist[[x]]);dev.off()}

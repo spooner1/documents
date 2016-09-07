@@ -1,0 +1,35 @@
+﻿library(ChIPpeakAnno)
+library(biomaRt)
+require(TxDb.Hsapiens.UCSC.hg19.knownGene)
+txdb <- annoGR(TxDb.Hsapiens.UCSC.hg19.knownGene, feature="gene")
+
+# import peaks
+peaks <- list.files(".",pattern="_peaks.bed")
+for(x in peaks){assign(strsplit(x,"_peaks.bed")[[1]][1], BED2RangedData(read.delim(x, header=F), FALSE))}
+
+### features 
+TSS = getAnnotation(useMart(biomart="ensembl", dataset="hsapiens_gene_ensembl"), featureType="TSS")
+
+#featureType accepts one of the feature types (case sensitive): "TSS", "miRNA", "Exon", "5utr", "3utr", "ExonPlusUtr", “transcript”
+annotatedPeak <- annotatePeakInBatch(peaks, AnnotationData=txdb)
+
+
+### overlap ###
+
+ol <- findOverlapsOfPeaks(peaks,connectedPeaks="merge")
+
+write.table(as.data.frame(ol$peaklist[[3]])[,c(1:3)],quote=F,row.names=F,col.names=F,file="empty_wt_lv5_r3_ebf_empty_wt_r3_znf.bed",sep="\t")
+
+### makevenn ###
+
+makeVennDiagram(ol, totalTest= 42465)
+ol$venn_counts[1,#samples+1] <- rechts_oben_makeVennDiagramm
+
+pdf("empty_wt_lv5_r3_ebf_empty_wt_r3_znf.pdf",title="empty_wt_lv5_r3_ebf_empty_wt_r3_znf")
+limma::vennDiagram(ol$venn_cnt,mar=rep(1,4),cex=c(1,1,1),lwd=1,circle.col=1)
+dev.off()
+
+hs = 2897310450
+mm = 2652783450
+
+

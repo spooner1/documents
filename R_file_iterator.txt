@@ -1,0 +1,36 @@
+﻿for (i in 1:length(files)){
+data <- as.matrix(read.delim(files[i]))
+s = as.character(files[i])
+s <- sub("_cov.tsv","",s)
+pdf(paste(s,".pdf",sep=""),title=s)
+matplot(data,type="l",col=1:4,ylab="",lty=1,main=s)
+legend("topleft", colnames(data), col=1:4, pch=1)
+dev.off()
+}
+
+
+data <- read.delim("BAC-MCMV-DM36_bwa.cov",header=F)
+data$V1 <- NULL
+data$V2 <- NULL
+data <- as.matrix(data)
+
+pdf("M36.pdf", title="M36")
+par(mfrow=c(2,1))
+matplot(data[47000:50000,],type="l",col="red",xlab="bp",ylab="coverage",lty=1,main="M36",xaxt="n")
+axis(1, at=seq(0, 3000, by=100), labels=NA, tck=-.025)
+axis(1, at=seq(0, 3000, by=500), labels=seq(47000, 50000, by=500))
+matplot(data[183000:187000,],type="l",col="red",xlab="bp",ylab="coverage",lty=1,main="",xaxt="n")
+axis(1, at=seq(0, 4000, by=100), labels=NA, tck=-.025)
+axis(1, at=seq(0, 4000, by=500), labels=seq(183000, 187000, by=500))
+dev.off()
+
+pdf("M45.pdf", title="M45")
+par(mfrow=c(2,1))
+matplot(data2[59000:64000,],type="l",col="red",xlab="bp",ylab="coverage",lty=1,main="M45",xaxt="n")
+axis(1, at=seq(0, 5000, by=100), labels=NA, tck=-.025)
+axis(1, at=seq(0, 5000, by=500), labels=seq(59000, 64000, by=500))
+matplot(data2[183000:187000,],type="l",col="red",xlab="bp",ylab="coverage",lty=1,main="",xaxt="n")
+axis(1, at=seq(0, 4000, by=100), labels=NA, tck=-.025)
+axis(1, at=seq(0, 4000, by=500), labels=seq(183000, 187000, by=500))
+dev.off()
+

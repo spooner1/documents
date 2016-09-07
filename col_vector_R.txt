@@ -1,0 +1,1 @@
+﻿Col <- colorRampPalette(c("red","white","blue"))(100)
