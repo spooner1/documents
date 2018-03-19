@@ -1,0 +1,13 @@
+library(VennDiagram)
+library(gplots)
+
+
+genes <- list()
+y <- 1; for(x in list.files(pattern="txt")){genes[[y]] <- as.vector(read.table(x)$V1); y <- y + 1}
+
+p <- venn.diagram(genes, filename=NULL, alpha=c(0.5,0.5), cex = 1, fill=c("green","red"), fontfamily = 'sans', cat.fontfamily = 'sans', main=x, margin=0.1, main.cex=3, cat.dist=0.05)
+pdf("venn.pdf"), width=10, height=10); grid.draw(p); dev.off()
+
+for(x in c("H3ac","H3K27","H3K4","H3K9")){clstrs <- attr(venn(genes[grepl(x, names(genes))], show.plot=F), "intersections"); d <- qpcR:::cbind.na(clstrs[[1]],clstrs[[2]],clstrs[[3]]); colnames(d) <- names(clstrs); write.table(d, file=paste0(x,".tsv"), quote=F, sep="\t", row.names=F)}
+
+
