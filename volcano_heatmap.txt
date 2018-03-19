@@ -1,23 +1,26 @@
-﻿install.packages("ggplot2")
-require(ggplot2)
+﻿library(ggplot2)
 
 DESeq2...
 
 res48h <- as.data.frame(results(dds, contrast=c("group","kshv48h","mock48h")))
 res7d <- as.data.frame(results(dds, contrast=c("group","kshv7d","mock7d")))
 res14d <- as.data.frame(results(dds, contrast=c("group","kshv14d","mock14d")))
-res48h$threshold = as.factor(abs(res48h$log2FoldChange) > 0.5 & res48h$pvalue < 0.1)
-res7d$threshold = as.factor(abs(res7d$log2FoldChange) > 0.5 & res7d$pvalue < 0.1)
-res14d$threshold = as.factor(abs(res14d$log2FoldChange) > 0.5 & res14d$pvalue < 0.1)
+res48h$thres = as.factor(abs(res48h$log2FoldChange) > 0.5 & res48h$pvalue < 0.1)
+res7d$thresh = as.factor(abs(res7d$log2FoldChange) > 0.5 & res7d$pvalue < 0.1)
+res14d$thresh = as.factor(abs(res14d$log2FoldChange) > 0.5 & res14d$pvalue < 0.1)
 
-g =  ggplot(data=res48h, aes(x=log2FoldChange, y=-log(pvalue), colour=threshold)) +
+g =  ggplot(data=wt, aes(x=Log2.L.H.wt.pure, y=-log(Pure_wt.Sig..B),color=thresh)) +
      geom_point(alpha=1, size=1.75) +
      theme(legend.position = "none") +
-     xlim(c(-3, 3)) + ylim(c(0, 15)) +
-     xlab("log2 fold change") + ylab("-log10 p-value") +
-     scale_colour_manual(values=c("black", "red"))
+     xlim(c(-5.5, 5.5)) + ylim(c(0, 25)) +
+     xlab("log2 fold change") + ylab("-log SigB") +
+     scale_colour_manual(values=c("black", "red")) +
+     geom_hline(yintercept=4.60517, linetype="dashed") +
+     geom_vline(xintercept=-1, linetype="dashed") +
+     geom_vline(xintercept=1, linetype="dashed")
+plot(g)
 
-pdf("48h.pdf",title="48h")
-g+ggtitle("48h")+theme(title = element_text(size = 24,face = "bold"))+theme(axis.title = element_text(size = 20,face = "bold"))
+pdf("total.pdf",title="")
+g+ggtitle(expression('Total, SigB'[min]*'=1e-10'))+theme(title = element_text(size = 24,face = "bold"))+theme(axis.title = element_text(size = 20,face = "bold"))
 dev.off()
 

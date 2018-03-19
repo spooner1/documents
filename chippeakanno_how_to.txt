@@ -1,7 +1,7 @@
-﻿library(ChIPpeakAnno)
+library(ChIPpeakAnno)
 library(biomaRt)
-require(TxDb.Hsapiens.UCSC.hg19.knownGene)
-txdb <- annoGR(TxDb.Hsapiens.UCSC.hg19.knownGene, feature="gene")
+require(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- annoGR(TxDb.Hsapiens.UCSC.hg38.knownGene, feature="gene")
 
 # import peaks
 peaks <- list.files(".",pattern="_peaks.bed")
@@ -22,14 +22,10 @@ write.table(as.data.frame(ol$peaklist[[3]])[,c(1:3)],quote=F,row.names=F,col.nam
 
 ### makevenn ###
 
-makeVennDiagram(ol, totalTest= 42465)
-ol$venn_counts[1,#samples+1] <- rechts_oben_makeVennDiagramm
+library(gplots)
 
-pdf("empty_wt_lv5_r3_ebf_empty_wt_r3_znf.pdf",title="empty_wt_lv5_r3_ebf_empty_wt_r3_znf")
-limma::vennDiagram(ol$venn_cnt,mar=rep(1,4),cex=c(1,1,1),lwd=1,circle.col=1)
-dev.off()
-
-hs = 2897310450
-mm = 2652783450
-
+ol_venn <- list()
+ol_venn$st_lt <- c(unname(unlist(c(ol_st_lt$peaklist$st_lt$peakNames))),unname(sapply(ol_st_lt$mergedPeaks$peakNames,function(x) paste(x,collapse="_"))))
+ol_st_lt_venn$st_lt_1 <- c(unname(unlist(c(ol_st_lt$peaklist$st_plus_lt_1$peakNames))),unname(sapply(ol_st_lt$mergedPeaks$peakNames,function(x) paste(x,collapse="_"))))
+grid.draw(venn.diagram(ol_venn, filename=NULL, alpha=c(0.5,0.5), cex = 1, fill=c("green","red"), main="lt", cat.dist=0.05, scaled=T, main.fontfamily="sans",cat.fontfamily="sans",fontfamily="sans"))
 
