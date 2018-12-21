@@ -1,0 +1,17 @@
+###   Alles als su ausführen   ###
+
+###   NextSeq   ###
+bcl2fastq -R /mnt/raw/181030_NB501882_0073_AHNV7KBGX7/ -o /backup/181030_NB501882_0073_AHNV7KBGX7/ --sample-sheet SampleSheet.csv --no-lane-splitting -r 6 -d 6 -p 6 -w 6
+cd /backup/181030_NB501882_0073_AHNV7KBGX7/
+x=` ll */*/*gz | wc -l`; fastqc -t $x */*/*gz   ### FastQC-Reports
+for x in */; do cd $x; multiqc . -f; rm -rf multiqc_data/; cd ../; done   ### MultiQC-Reports
+rsync --archive /backup/181030_NB501882_0073_AHNV7KBGX7/ /fastq/181030_NB501882_0073_AHNV7KBGX7/
+
+###   MiSeq   ###
+rsync --archive /mnt/raw/180907_M03701_0134_000000000-B6NYK/Data/Intensities/BaseCalls/ /backup/180907_M03701_0134_000000000-B6NYK/ --exclude=Matrix --exclude=L001 --exclude=Phasing
+rsync --archive /backup/180907_M03701_0134_000000000-B6NYK/ /fastq/180907_M03701_0134_000000000-B6NYK/
+
+### cellranger   ###
+cellranger mkfastq --id 180914_NB501882_0068_AHF2K3BGX7 --run /mnt/raw/180914_NB501882_0068_AHF2K3BGX7/ --sample-sheet /mnt/raw/180914_NB501882_0068_AHF2K3BGX7/SampleSheet_10x.csv --output-dir d_indenbirken --qc --localmem=200 --localcores=24
+
+for x in *L001*R1*gz; do cellranger count --id=${x%_S*} --transcriptome=/ref/custom/Homo_sapiens_kshv/cellranger/ --fastqs=/home/mspohn/projekte/10x/d_indenbirken/180914_NB501882_0068_AHF2K3BGX7/ --sample=${x%_S*} --expect-cells=5000; done

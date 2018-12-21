@@ -18,74 +18,89 @@ dir.create("./annotated_peaks")
 peaks <- as.list(list.files("./",pattern="peaks.bed"))
 summits <- as.list(list.files("./", pattern="summits.bed"))
 
-#for(x in summits){y=unlist(strsplit(x,"\\."[[1]][1])); pdf(paste(y,"genome_cov.pdf",sep="_")); plot(covplot(readPeakFile(x),title=paste("ChIP Peaks over Chromosomes",y), weightCol="V5")); dev.off()}; dev.off()
 
+#### Genome Coverage ####
+for(x in summits){y=unlist(strsplit(x,"\\."[[1]][1])); pdf(paste(y,"genome_cov.pdf",sep="_")); plot(covplot(readPeakFile(x),title=paste("ChIP Peaks over Chromosomes",y), weightCol="V5")); dev.off()}; dev.off()
+
+
+#### Promoter Heatmaps ####
 tagMatrixList <- list()
-for(x in peaks){tagMatrixList[[strsplit(x, "\\.")[[1]][1]]] <- getTagMatrix(x, windows=promoter)}
-
+for(x in peaks){tagMatrixList[[strsplit(x, "\\_peaks.")[[1]][1]]] <- getTagMatrix(x, windows=promoter)}
 tiff("plots/TSS_Heatmaps.tiff", title="TSS_Heatmaps")
 tagHeatmap(tagMatrixList, xlim=c(-3000, 3000), color=NULL)
 dev.off()
 
-peakslist <- list()
-for(x in peaks){peakslist[[strsplit(x, "\\.bed")[[1]][1]]] <- annotatePeak(x, tssRegion=c(-3000, 1000),TxDb=txdb, annoDb=annoDb,verbose=F)}
 
+#### Feature-Distribution with 100000 Random Peaks and Feature-Distribution around TSS ####
 summitslist <- list()
-for(x in summits){summitslist[[paste0(strsplit(x, "_summits\\.")[[1]][1],"_peaks")]] <- annotatePeak(x, tssRegion=c(-3000, 1000),TxDb=txdb, annoDb=annoDb,verbose=F)}
-
+system("bedtools random -l 1 -n 100000 -g /ref/Homo_sapiens/UCSC/hg38/genome.txt > 100000_random")
+summits[[length(summits) + 1]] <- "100000_random"
+for(x in summits){summitslist[[paste0(strsplit(x, "_summits\\.")[[1]][1],"_peaks")]] <- annotatePeak(x, tssRegion=c(-3000, 3000),TxDb=txdb, annoDb=annoDb,verbose=F)}
 pdf("plots/Feature_Distribution.pdf", title="Feature_Distribution")
 plotAnnoBar(summitslist)
 dev.off()
+pdf("plots/Distribution_rel_to_TSS.pdf", title="Distribution_rel_to_TSS")
+plotDistToTSS(summitslist)
+dev.off()
+summits[[length(summits)]] <- NULL
+summitslist[[length(summitslist)]] <- NULL
 
+peakslist <- list()
+system("bedtools random -l 1 -n 100000 -g /ref/Homo_sapiens/UCSC/hg38/genome.txt > 100000_random")
+peaks[[length(peaks) + 1]] <- "100000_random"
+for(x in peaks){peakslist[[paste0(strsplit(x, "_peaks\\.")[[1]][1],"_peaks")]] <- annotatePeak(x, tssRegion=c(-3000, 3000),TxDb=txdb, annoDb=annoDb,verbose=F)}
+pdf("plots/Feature_Distribution.pdf", title="Feature_Distribution")
+plotAnnoBar(peakslist)
+dev.off()
 pdf("plots/Distribution_rel_to_TSS.pdf", title="Distribution_rel_to_TSS")
 plotDistToTSS(peakslist)
 dev.off()
+peaks[[length(peaks)]] <- NULL
+peakslist[[length(peakslist)]] <- NULL
 
-#genes = lapply(peakslist, function(i) as.data.frame(i)$geneId); 
-#compMF <- compareCluster(geneCluster=genes, fun="enrichKEGG", pvalueCutoff=0.05, pAdjustMethod="BH")
-#pdf("KEGG_Enrichment.pdf", title="KEGG_Enrichment",width=10,height=15)
-#plot(compMF, showCategory = 20, title = "KEGG Enrichment")
-#dev.off()
 
-#tagMatrixList <- list()
-#for(x in summits){tagMatrixList[[strsplit(x, "\\.")[[1]][1]]] <- getTagMatrix(x, windows=promoter)}
-
+#### Read-Density arround Promoter ####
+tagMatrixList <- list()
+for(x in summits){tagMatrixList[[strsplit(x, "\\.")[[1]][1]]] <- getTagMatrix(x, windows=promoter)}
 pdf("plots/Peaks_TSS_3000bp.pdf", title="Peaks_TSS_3000bp")
 plotAvgProf(tagMatrixList, xlim=c(-3000, 3000), conf=0.95,resample=100, facet="row")
 dev.off()
 
 
-peaks <- list()
+#### Annotate Peaks as TSV ####
+peakslist <- list()
+for(x in peaks){peakslist[[strsplit(x, "\\_peaks.bed")[[1]][1]]] <- annotatePeak(x, tssRegion=c(-3000, 3000),TxDb=txdb, annoDb=annoDb,verbose=F)}
 for(x in names(peakslist)){
 peak <- as.data.frame(as.GRanges(peakslist[[x]]))[,-5]
 names(peak)[5:6] <- c("name","score")
-genes[[x]] <- unique(peak[grepl("Promoter",peak$annotation),]$SYMBOL)
 peak <- peak[order(peak$score,decreasing=T),]
-peaks[[x]] <- peak
+peakslist[[x]] <- peak
 write.table(peak,file=paste0("annotated_peaks/",x,"_annotated.tsv"),sep="\t",quote=F,row.names=F)}
 
-summits <- list()
-for(x in names(summitslist)){
-summit <- as.data.frame(as.GRanges(summitslist[[x]]))[,c(1:3,6:7)]
-names(summit)[4:5] <- c("name","score")
-summits[[x]] <- summit}
 
+#### Find overlapping Peaks ####
+for(x in peaks){assign(strsplit(x,"_peaks.bed")[[1]][1], BED2RangedData(read.delim(x, header=F)[,1:4], FALSE))}
+ol <- suppressWarnings(findOverlapsOfPeaks(sapply(sub("_peaks.bed","",unlist(peaks)),get),connectedPeaks="merge"))
 
-peaks_anno <- list.files(".",pattern="_peaks.bed")
-for(x in peaks_anno){assign(strsplit(x,".bed")[[1]][1], BED2RangedData(read.delim(x, header=F), FALSE))}
-ol <- suppressWarnings(findOverlapsOfPeaks(sapply(names(peaks),get),connectedPeaks="merge"))
-remove(peaks_anno)
+#### Generate Venn-Diagramm ####
+#### two chips venn ####
+v <- vector();for(x in list(c(1),c(2),c(1,2))){if(length(x) > 1){v <- c(v,sum(ol$venn_cnt[rowSums(ol$venn_cnt[,x] == 1) == length(x),3]))};if(length(x) == 1){v <- c(v,sum(ol$venn_cnt[ol$venn_cnt[,x] == 1,3]))}};v
+venn.plot <- draw.pairwise.venn(area1 = v[1],area2 = v[2],cross.area = v[3],category = sub("_peaks.bed","",unlist(peaks)),fill = c("green", "red"),fontfamily = 'sans', cat.fontfamily = 'sans', main="", margin=0.1, main.cex=3, ind=F, scaled=T)
 
-###   four chips venn   ###
+#### three chips venn ####
+v <- vector(); for(x in list(c(1),c(2),c(3),c(1,2),c(1,3),c(2,3),c(1,2,3))){if(length(x) > 1){v <- c(v,sum(ol$venn_cnt[rowSums(ol$venn_cnt[,x] == 1) == length(x),4]))};if(length(x) == 1){v <- c(v,sum(ol$venn_cnt[ol$venn_cnt[,x] == 1,4]))}};v
+venn.plot <- draw.triple.venn(area1 = v[1],area2 = v[2],area3 = v[3],n12 = v[4],n13 = v[5],n23 = v[6],n123 = v[7],category = sub("_peaks.bed","",unlist(peaks)),fill = c("red", "green", "blue"),fontfamily = 'sans', cat.fontfamily = 'sans', main="", margin=0.1, main.cex=3, ind=F)
 
+#### four chips venn ####
 v <- vector(); for(x in list(c(1),c(2),c(3),c(4),c(1,2),c(1,3),c(1,4),c(2,3),c(2,4),c(3,4),c(1,2,3),c(1,2,4),c(1,3,4),c(2,3,4),c(1,2,3,4))){if(length(x) > 1){v <- c(v,sum(ol$venn_cnt[rowSums(ol$venn_cnt[,x] == 1) == length(x),5]))};if(length(x) == 1){v <- c(v,sum(ol$venn_cnt[ol$venn_cnt[,x] == 1,5]))}};v
-venn.plot <- draw.quad.venn(area1 = v[1],area2 = v[2],area3 = v[3],area4 = v[4],n12 = v[5],n13 = v[6],n14 = v[7],n23 = v[8],n24 = v[9],n34 = v[10],n123 = v[11],n124 = v[12],n134 = v[13],n234 = v[14],n1234 = v[15],category = sub("_peaks","",names(peaks)),fill = c("orange", "red", "green", "blue"),fontfamily = 'sans', cat.fontfamily = 'sans', main="", margin=0.1, main.cex=3, ind=F)
+venn.plot <- draw.quad.venn(area1 = v[1],area2 = v[2],area3 = v[3],area4 = v[4],n12 = v[5],n13 = v[6],n14 = v[7],n23 = v[8],n24 = v[9],n34 = v[10],n123 = v[11],n124 = v[12],n134 = v[13],n234 = v[14],n1234 = v[15],category = sub("_peaks.bed","",unlist(peaks)),fill = c("orange", "red", "green", "blue"),fontfamily = 'sans', cat.fontfamily = 'sans', main="", margin=0.1, main.cex=3, ind=F)
 
+#### five chips venn ####
+v <- vector(); for(x in list(c(1),c(2),c(3),c(4),c(5),c(1,2),c(1,3),c(1,4),c(1,5),c(2,3),c(2,4),c(2,5),c(3,4),c(3,5),c(4,5),c(1,2,3),c(1,2,4),c(1,2,5),c(1,3,4),c(1,3,5),c(1,4,5),c(2,3,4),c(2,3,5),c(2,4,5),c(3,4,5),c(1,2,3,4),c(1,2,3,5),c(1,2,4,5),c(1,3,4,5),c(2,3,4,5),c(1,2,3,4,5))){if(length(x) > 1){v <- c(v,sum(ol$venn_cnt[rowSums(ol$venn_cnt[,x] == 1) == length(x),6]))};if(length(x) == 1){v <- c(v,sum(ol$venn_cnt[ol$venn_cnt[,x] == 1,6]))}};v
+venn.plot <- draw.quintuple.venn(area1 = v[1],area2 = v[2],area3 = v[3],area4 = v[4],area5 = v[5],n12 = v[6],n13 = v[7],n14 = v[8],n15 = v[9],n23 = v[10],n24 = v[11],n25 = v[12],n34 = v[13], n35 = v[14], n45 = v[15],n123 = v[16],n124 = v[17], n125 = v[18],n134 = v[19],n135 = v[20],n145 = v[21],n234 = v[22],n235 = v[23],n245 = v[24], n345 = v[25],n1234 = v[26],n1235 = v[27],n1245 = v[28],n1345 = v[29], n2345 = v[30], n12345 = v[31],category = sub("_peaks.bed","",unlist(peaks)),fill = c("orange", "red", "green", "blue","yellow"),fontfamily = 'sans', cat.fontfamily = 'sans', main="", margin=0.1, main.cex=3, ind=F)
+
+#### Plot Venn-Diagramm ####
 pdf("plots/vennplot.pdf")
 grid.draw(venn.plot)
 dev.off()
-
-for(y in names(ol$peaklist)){tmp_peaks <- data.frame();tmp_summits <- data.frame();for(x in unlist(strsplit(y,"///"))){tmp_names <- sub(paste0(x,"__"),"",as.vector(unlist(ol$peaklist[[y]]$peakNames)[grepl(paste0(x,"__MACS"),unlist(ol$peaklist[[y]]$peakNames))]));tmp_peaks <- rbind(tmp_peaks,subset(peaks[[x]], name %in% tmp_names));tmp_summits <- rbind(tmp_summits,subset(summits[[x]], name %in% tmp_names))};write.table(tmp_peaks,file=paste0("overlap_peaks/",gsub("///","+",y),"_annotated.tsv"),sep="\t",quote=F,row.names=F);write.table(tmp_summits,file=paste0("overlap_summits/",gsub("///","+",y),".bed"),sep="\t",quote=F,row.names=F,col.names=F)}
-
-
 

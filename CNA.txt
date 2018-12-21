@@ -1,0 +1,10 @@
+source("pipeline.R")
+for(x in list.files(".",pattern =".vcf$"))
+{
+  table=EditVCF(Directory = "./",Organism = "Human",x)
+  table$chr=as.numeric(table$chr)
+  table=table[order(table$chr,table$position),]
+  table=table[table$chr>0,]
+  table2=MajorMinorCalc(Table = table, minDP = 20, maxDP = 20000, minAF = 0.2)
+  pdf(sub("_hg38_rg_split.vcf",".pdf",x), width=15); PlotGenome(orderedTable = table2, Window = 151, Ylim = 3, PValue = T, Organism = "Human"); dev.off()
+}

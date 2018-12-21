@@ -1,0 +1,60 @@
+﻿library(ggplot2)
+
+DESeq2...
+
+res_tmp$thresh = as.factor(abs(res_tmp$log2FoldChange) > 1 & res_tmp$FDR < 0.1)
+
+g =  ggplot(data=res_tmp, aes(x=log2FoldChange, y=-log(res_tmp$FDR),color=thresh)) +
+     geom_point(alpha=1, size=1.75) +
+     theme(legend.position = "none") +
+     xlim(c(-max(abs(res_tmp[!is.na(res_tmp$log2FoldChange),]$log2FoldChange)), max(abs(res_tmp[!is.na(res_tmp$log2FoldChange),]$log2FoldChange)))) +
+     ylim(c(0, max(-log(res_tmp$FDR)))) +
+     xlab("log2 fold change") + ylab("-log(FDR)") +
+     scale_colour_manual(values=c("black", "red")) +
+     geom_hline(yintercept=-log(0.1), linetype="dashed") +
+     geom_vline(xintercept=-1, linetype="dashed") +
+     geom_vline(xintercept=1, linetype="dashed") +
+     geom_text_repel(data=res_tmp[res_tmp$GeneSymbol %in% paper_fig_c_genes,],aes(x=res_tmp[res_tmp$GeneSymbol %in% paper_fig_c_genes,]$log2FoldChange, y=-log(res_tmp[res_tmp$GeneSymbol %in% paper_fig_c_genes,]$FDR),color=thresh, label=names), size =4, force = 2, max.iter = 1000); plot(g)
+
+pdf("total.pdf",title="")
+g+ggtitle(expression('Total, SigB'[min]*'=1e-10'))+theme(title = element_text(size = 24,face = "bold"))+theme(axis.title = element_text(size = 20,face = "bold"))
+dev.off()
+
+
+for(x in names(res)){
+lfc = 1
+fdr = 0.1
+res_tmp <- as.data.frame(res[[x]])
+colnames(res_tmp)[6] <- "FDR"
+res_tmp$thresh = as.factor(abs(res_tmp$log2FoldChange) > 1 & res_tmp$FDR < fdr)
+g =  ggplot(data=res_tmp, aes(x=log2FoldChange, y=-log(res_tmp$FDR),color=thresh)) +
+     geom_point(alpha=1, size=1.75) +
+     theme(legend.position = "none") +
+     xlim(c(-max(abs(res_tmp[!is.na(res_tmp$log2FoldChange),]$log2FoldChange)), max(abs(res_tmp[!is.na(res_tmp$log2FoldChange),]$log2FoldChange)))) +
+     ylim(c(0, max(-log(res_tmp$FDR)))) +
+     xlab("log2 fold change") + ylab("-log(FDR)") + ggtitle(x) +
+     scale_colour_manual(values=c("black", "red")) +
+     geom_hline(yintercept=-log(fdr), linetype="dashed") +
+     geom_vline(xintercept=-lfc, linetype="dashed") +
+     geom_vline(xintercept=lfc, linetype="dashed")
+pdf(paste0(x,"_volcano.pdf"),title=paste0("Volcano Plot ",x));plot(g);dev.off()
+}
+
+for(x in names(res)){
+lfc = 2
+p = 0.05
+res_tmp <- as.data.frame(res[[x]])
+res_tmp$thresh = as.factor(abs(res_tmp$log2FoldChange) > lfc & res_tmp$pvalue < p)
+g =  ggplot(data=res_tmp, aes(x=log2FoldChange, y=-log(res_tmp$pvalue),color=thresh)) +
+     geom_point(alpha=1, size=1.75) +
+     theme(legend.position = "none") +
+     xlim(c(-max(abs(res_tmp[!is.na(res_tmp$log2FoldChange),]$log2FoldChange)), max(abs(res_tmp[!is.na(res_tmp$log2FoldChange),]$log2FoldChange)))) +
+     ylim(c(0, max(-log(res_tmp$pvalue)))) +
+     xlab("log2 fold change") + ylab("-log(p-value)") + ggtitle(x) +
+     scale_colour_manual(values=c("black", "red")) +
+     geom_hline(yintercept=-log(p), linetype="dashed") +
+     geom_vline(xintercept=-lfc, linetype="dashed") +
+     geom_vline(xintercept=lfc, linetype="dashed")
+pdf(paste0(x,"_volcano.pdf"),title=paste0("Volcano Plot ",x));plot(g);dev.off()
+}
+
